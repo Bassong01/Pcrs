@@ -162,7 +162,7 @@ CREATE TABLE case_persons (
   added_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(case_id, person_id)
 );
-COMMENT ON TABLE case_persons IS 'Links cases to persons and records each person\'s role in a case.';
+COMMENT ON TABLE case_persons IS 'Links cases to persons and records each person''s role in a case.';
 
 -- ============================================================
 -- CRIMINAL RECORDS TABLE
