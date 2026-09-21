@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: pcrs-backend
+    env: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 24h
+      - key: NODE_VERSION
+        value: 20.11.1
