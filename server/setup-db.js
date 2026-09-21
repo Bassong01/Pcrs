@@ -9,19 +9,26 @@ const path = require('path');
 require('dotenv').config();
 
 async function setup() {
-  // Connect to default postgres database to create our db
-  const adminPool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 5432,
-    database: 'postgres',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'postgres',
-  });
-
+  let pool;
+  
   try {
-    console.log('🔧 Setting up Police Criminal Record System database...\n');
+    if (process.env.DATABASE_URL) {
+    console.log('🔗 Connecting to remote database via DATABASE_URL...');
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }
+    });
+  } else {
+    // Connect to default postgres database to create our db (LOCAL ONLY)
+    const adminPool = new Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT) || 5432,
+      database: 'postgres',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'postgres',
+    });
 
-    // Create database if it doesn't exist
+    console.log('🔧 Setting up local Police Criminal Record System database...\n');
     const dbName = process.env.DB_NAME || 'pcrs_db';
     const dbCheck = await adminPool.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [dbName]);
 
@@ -31,17 +38,16 @@ async function setup() {
     } else {
       console.log(`ℹ️  Database "${dbName}" already exists.`);
     }
-
     await adminPool.end();
 
-    // Connect to our database
-    const pool = new Pool({
+    pool = new Pool({
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT) || 5432,
       database: dbName,
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
     });
+  }
 
     // Run schema
     console.log('📋 Running schema...');
