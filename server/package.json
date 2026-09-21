@@ -6,10 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "setup-db": "node setup-db.js",
-    "build": "cd client && npm install && npm run build"
+    "setup-db": "node setup-db.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -17,7 +17,6 @@
     "express-validator": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
-    "pg": "^8.13.0",
-    "socket.io": "^4.8.3"
+    "pg": "^8.13.0"
   }
 }

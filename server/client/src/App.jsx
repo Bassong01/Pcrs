@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { io } from 'socket.io-client'
+import { supabase } from './supabaseClient'
 import './App.css'
 
 const demoAccounts = [
@@ -81,16 +81,16 @@ function App() {
             return undefined
         }
         if (offlineMode) return undefined
-        const socket = io(window.location.origin, { auth: { token: session.token } })
-        socket.on('notification', (notification) => {
-            storeNotification(notification)
+        const channel = supabase.channel('pcrs-alerts')
+        channel.on('broadcast', { event: 'notification' }, ({ payload }) => {
+            storeNotification(payload)
             setNotifications(getStoredNotifications())
-        })
+        }).subscribe()
         const onStorage = (event) => {
             if (event.key === 'pcrs_notifications') setNotifications(getStoredNotifications())
         }
         window.addEventListener('storage', onStorage)
-        return () => { socket.disconnect(); window.removeEventListener('storage', onStorage) }
+        return () => { supabase.removeChannel(channel); window.removeEventListener('storage', onStorage) }
     }, [session, offlineMode])
 
     const headers = session ? { Authorization: `Bearer ${session.token}` } : {}

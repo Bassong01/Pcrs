@@ -1,8 +1,8 @@
 const express = require('express');
 const path = require('path');
-const fs = require('fs');
 const multer = require('multer');
 const pool = require('../config/db');
+const supabase = require('../config/supabase');
 const { authenticate, authorize } = require('../middleware/auth');
 const { auditLog } = require('../middleware/audit');
 const { validateRequest, requiredText, optionalText, positiveId, paginationRules } = require('../middleware/validate');
@@ -10,22 +10,10 @@ const { body } = require('express-validator');
 
 const router = express.Router();
 
-const uploadDir = path.join(__dirname, '../uploads/persons');
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    const safeName = `${Date.now()}-${Math.random().toString(16).slice(2)}${ext}`;
-    cb(null, safeName);
-  },
-});
+const PHOTO_BUCKET = 'person-photos';
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
@@ -136,7 +124,21 @@ router.post('/:id/photo', authenticate, authorize('police_officer', 'admin'), up
       return res.status(400).json({ error: 'Photo file is required.' });
     }
 
-    const photoUrl = `${req.protocol}://${req.get('host')}/uploads/persons/${req.file.filename}`;
+    const ext = path.extname(req.file.originalname) || '.jpg';
+    const objectPath = `${Date.now()}-${Math.random().toString(16).slice(2)}${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(PHOTO_BUCKET)
+      .upload(objectPath, req.file.buffer, { contentType: req.file.mimetype });
+
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError);
+      return res.status(500).json({ error: 'Server error while uploading photo.' });
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(objectPath);
+    const photoUrl = publicUrlData.publicUrl;
+
     const result = await pool.query(
       `UPDATE persons_of_interest SET photo_url = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *`,
       [photoUrl, id]
