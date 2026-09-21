@@ -71,10 +71,11 @@ async function setup() {
     // Replace placeholder hashes in order of appearance in the INSERT
     const placeholders = seedSQL.match(/\$2b\$10\$placeholder/g);
     if (placeholders) {
-      // The seed file has 6 users: admin, officer, judge, inspector, officer2, officer3
-      const hashOrder = [passwords.admin, passwords.officer, passwords.judge, passwords.inspector, passwords.officer, passwords.officer];
+      // First 4 users are the demo accounts in a fixed order; any further seeded
+      // officer/judge accounts reuse the officer/judge hash so they can still log in.
+      const hashOrder = [passwords.admin, passwords.officer, passwords.judge, passwords.inspector];
       let idx = 0;
-      seedSQL = seedSQL.replace(/\$2b\$10\$placeholder/g, () => hashOrder[idx++]);
+      seedSQL = seedSQL.replace(/\$2b\$10\$placeholder/g, () => hashOrder[idx] !== undefined ? hashOrder[idx++] : (idx++, passwords.officer));
     }
 
     console.log('🌱 Seeding demo data...');

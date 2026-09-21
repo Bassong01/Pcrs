@@ -243,6 +243,30 @@ nav {
     font-size: 12px;
 }
 
+.lang-toggle {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: var(--white);
+    color: var(--teal-dark);
+    font: 700 11px 'DM Mono', monospace;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+}
+
+.lang-toggle:hover {
+    background: var(--teal);
+    color: #fff;
+}
+
+.login-lang-toggle {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    z-index: 5;
+}
+
 .notification-wrap {
     position: relative;
 }
@@ -535,10 +559,42 @@ nav {
     font: 10px 'DM Mono', monospace;
 }
 
+.metric-grid.secondary {
+    grid-template-columns: repeat(4, 1fr);
+    margin-bottom: 25px;
+}
+
+.metric-card.compact {
+    padding: 14px 19px;
+}
+
+.metric-card.compact strong {
+    font-size: 22px;
+    margin: 6px 0 0;
+}
+
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1.15fr .85fr;
     gap: 18px;
+}
+
+.dashboard-grid .panel.span-2 {
+    grid-column: 1 / -1;
+}
+
+.bar-track span.bar-fill.critical,
+.bar-track span.bar-fill.high {
+    background: var(--red);
+}
+
+.bar-track span.bar-fill.medium,
+.bar-track span.bar-fill.pending {
+    background: var(--orange);
+}
+
+.bar-track span.bar-fill.low {
+    background: #8fb8b4;
 }
 
 .panel {
@@ -721,6 +777,7 @@ td:first-child {
 }
 
 .login-page {
+    position: relative;
     min-height: 100vh;
     display: grid;
     grid-template-columns: 1.15fr .85fr;
