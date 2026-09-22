@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabaseClient'
 import { exportWantedPoster, exportCaseSummary } from './pdf'
 import { makeTranslator, translateField } from './i18n'
+import logo from './assets/logo.png'
 import './App.css'
 
 const demoAccounts = [
@@ -16,6 +17,8 @@ const navItems = [
     ['records', 'navRecords', '▥'], ['alerts', 'navAlerts', '🚨'],
 ]
 const roleHome = { admin: 'overview', police_officer: 'cases', judicial_authority: 'alerts', general_inspectorate: 'audit' }
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ''
+function apiUrl(path) { return `${API_BASE}${path}` }
 const offlineSeed = { cases: [], persons: [], records: [], alerts: [], users: [], audit: [] }
 const alertReasons = ['Arrest warrant', 'Court conviction', 'Serious criminal offence', 'Fugitive suspect', 'Dangerous wanted suspect', 'Missing person linked to a crime', 'Other']
 const regionOptions = ['Adamawa', 'Centre', 'East', 'Far North', 'Littoral', 'North', 'North-West', 'South', 'South-West', 'West']
@@ -52,7 +55,7 @@ function storeNotification(notification) {
 }
 
 async function api(path, options = {}) {
-    const response = await fetch(path, { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } })
+    const response = await fetch(apiUrl(path), { ...options, headers: { 'Content-Type': 'application/json', ...(options.headers || {}) } })
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload.error || 'The request could not be completed.')
     return payload
@@ -77,6 +80,8 @@ function App() {
     const [lang, setLang] = useState(() => localStorage.getItem('pcrs_lang') || 'en')
     const t = useMemo(() => makeTranslator(lang), [lang])
     function toggleLang() { const next = lang === 'en' ? 'fr' : 'en'; localStorage.setItem('pcrs_lang', next); setLang(next) }
+    const [showSplash, setShowSplash] = useState(true)
+    useEffect(() => { const timer = setTimeout(() => setShowSplash(false), 1600); return () => clearTimeout(timer) }, [])
 
     useEffect(() => { if (session) loadView(activeView, wantedOnly) }, [session, activeView, offlineMode, wantedOnly])
 
@@ -152,7 +157,7 @@ function App() {
         if (!personId || !file) return null
         const formData = new FormData()
         formData.append('photo', file)
-        const response = await fetch(`/api/persons/${personId}/photo`, {
+        const response = await fetch(apiUrl(`/api/persons/${personId}/photo`), {
             method: 'POST',
             headers: { Authorization: `Bearer ${session.token}` },
             body: formData,
@@ -281,17 +286,22 @@ function App() {
     function logout() { localStorage.removeItem('pcrs_session'); localStorage.removeItem('pcrs_offline_mode'); setOfflineMode(false); setSession(null); setDashboard(emptyDashboard) }
     function changeView(view) { setSearch(''); setNotice(''); setWantedOnly(false); setActiveView(view) }
 
+    if (showSplash) return <Splash />
     if (!session) return <Login credentials={credentials} setCredentials={setCredentials} onSubmit={login} onOfflineLogin={loginOffline} loading={loading} error={error} t={t} lang={lang} toggleLang={toggleLang} />
     const titleKeys = { overview: 'titleOverview', cases: 'titleCases', persons: 'titlePersons', records: 'titleRecords', alerts: 'titleAlerts', users: 'titleUsers', audit: 'titleAudit' }
     const title = t(titleKeys[activeView] || 'titleOverview')
     const dateLocale = lang === 'fr' ? 'fr-FR' : 'en-GB'
     return <div className="app-shell">
-        <aside className="sidebar"><div className="brand"><span className="brand-mark">CR</span><span><strong>{t('brandName')}</strong><small>{t('brandSub')}</small></span></div><p className="eyebrow">{t('operationsConsole')}</p><nav>{navItems.map(([value, key, icon]) => <button className={activeView === value ? 'nav-item active' : 'nav-item'} key={value} onClick={() => changeView(value)}><span className="nav-icon">{icon}</span>{t(key)}</button>)}{canManage && <><p className="nav-section">{t('governance')}</p><button className={activeView === 'users' ? 'nav-item active' : 'nav-item'} onClick={() => changeView('users')}><span className="nav-icon">♙</span>{t('navUsers')}</button><button className={activeView === 'audit' ? 'nav-item active' : 'nav-item'} onClick={() => changeView('audit')}><span className="nav-icon">⌁</span>{t('navAudit')}</button></>}</nav><div className="sidebar-note"><span className="status-dot" />{t('secureNetwork')}<br /><small>{t('regionalDelegations')}</small></div></aside>
+        <aside className="sidebar"><div className="brand"><img src={logo} alt="" className="brand-mark" /><span><strong>{t('brandName')}</strong><small>{t('brandSub')}</small></span></div><p className="eyebrow">{t('operationsConsole')}</p><nav>{navItems.map(([value, key, icon]) => <button className={activeView === value ? 'nav-item active' : 'nav-item'} key={value} onClick={() => changeView(value)}><span className="nav-icon">{icon}</span>{t(key)}</button>)}{canManage && <><p className="nav-section">{t('governance')}</p><button className={activeView === 'users' ? 'nav-item active' : 'nav-item'} onClick={() => changeView('users')}><span className="nav-icon">♙</span>{t('navUsers')}</button><button className={activeView === 'audit' ? 'nav-item active' : 'nav-item'} onClick={() => changeView('audit')}><span className="nav-icon">⌁</span>{t('navAudit')}</button></>}</nav><div className="sidebar-note"><span className="status-dot" />{t('secureNetwork')}<br /><small>{t('regionalDelegations')}</small></div></aside>
         <main className="main-content"><header className="topbar"><div><p className="eyebrow">{new Date().toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p><h1>{title}</h1></div><div className="profile"><button className="lang-toggle" onClick={toggleLang} title="Switch language">{lang === 'en' ? 'FR' : 'EN'}</button><div className="notification-wrap"><button className="notification-button" aria-label="Notifications" onClick={() => setShowNotifications((visible) => !visible)}>⌁{notifications.length > 0 && <span className="notification-count">{notifications.length > 9 ? '9+' : notifications.length}</span>}</button>{showNotifications && <NotificationPanel notifications={notifications} onClear={() => setNotifications([])} t={t} />}</div><span className="avatar">{session.user.first_name[0]}{session.user.last_name[0]}</span><span><strong>{session.user.first_name} {session.user.last_name}</strong><small>{session.user.role.replaceAll('_', ' ')}</small></span><button className="logout" onClick={logout}>{t('signOut')}</button></div></header>{error && <div className="error-banner">{error}<button onClick={() => setError('')}>{t('dismiss')}</button></div>}{notice && <div className="notice-banner">{notice}</div>}{loading ? <div className="loading">{t('loadingData')}</div> : activeView === 'overview' ? <Overview dashboard={dashboard} setActiveView={changeView} t={t} /> : activeView === 'alerts' ? <Directory view={activeView} rows={rows} search={search} setSearch={setSearch} onSearch={() => loadView('alerts')} canWrite={canWrite} canReviewAlerts={canReviewAlerts} onCreate={() => setForm(newForm('alert', session.user))} onAction={alertAction} t={t} lang={lang} /> : activeView === 'users' || activeView === 'audit' ? <Directory view={activeView} rows={rows} search={search} setSearch={setSearch} onSearch={() => loadView(activeView)} t={t} lang={lang} /> : activeView === 'persons' ? <Directory view={activeView} rows={rows} search={search} setSearch={setSearch} onSearch={() => loadView(activeView)} canWrite={canWrite} onCreate={() => setForm(newForm('person', session.user))} onOpenPerson={openPersonProfile} t={t} lang={lang} /> : <Directory view={activeView} rows={rows} search={search} setSearch={setSearch} onSearch={() => loadView(activeView)} canWrite={canWrite} onCreate={() => setForm(newForm(activeView === 'cases' ? 'case' : 'record', session.user))} t={t} lang={lang} />}</main>{form && <FormModal form={form} setForm={setForm} submitForm={submitForm} loading={loading} t={t} lang={lang} />}{selectedPerson && <PersonProfilePanel person={selectedPerson} onClose={() => setSelectedPerson(null)} t={t} />}</div>
 }
 
+function Splash() {
+    return <div className="splash-screen"><img src={logo} alt="National Criminal Records" className="splash-logo" /><h1>National Criminal Records</h1><p>Securing the connection…</p><div className="splash-loader"><span /><span /><span /></div></div>
+}
+
 function Login({ credentials, setCredentials, onSubmit, onOfflineLogin, loading, error, t, lang, toggleLang }) {
-    return <main className="login-page"><button type="button" className="lang-toggle login-lang-toggle" onClick={toggleLang}>{lang === 'en' ? 'FR' : 'EN'}</button><section className="login-art"><p className="eyebrow">{t('loginKicker')}</p><h1>{t('loginHeading1')}<br /><em>{t('loginHeading2')}</em></h1><p>{t('loginPitch')}</p><div className="login-lines"><span>{t('loginStep1')}</span><span>{t('loginStep2')}</span><span>{t('loginStep3')}</span></div></section><form className="login-form" onSubmit={onSubmit}><div className="brand"><span className="brand-mark">CR</span><span><strong>{t('brandName')}</strong><small>{t('brandSub')}</small></span></div><h2>{t('welcomeBack')}</h2><p className="muted">{t('loginSubtitle')}</p><label>{t('username')}<input type="text" value={credentials.email} onChange={(event) => setCredentials({ ...credentials, email: event.target.value })} /></label><label>{t('password')}<input type="password" value={credentials.password} onChange={(event) => setCredentials({ ...credentials, password: event.target.value })} /></label>{error && <p className="form-error">{error}</p>}<button className="primary-button" disabled={loading}>{loading ? t('authenticating') : t('accessConsole')}</button><button type="button" className="outline-button" onClick={onOfflineLogin}>{t('useOffline')}</button><div className="demo-access"><span>{t('demoAccess')}</span>{demoAccounts.map((account) => <button type="button" key={account.email} onClick={() => setCredentials(account)}>{account.label}</button>)}</div></form></main>
+    return <main className="login-page"><button type="button" className="lang-toggle login-lang-toggle" onClick={toggleLang}>{lang === 'en' ? 'FR' : 'EN'}</button><section className="login-art"><p className="eyebrow">{t('loginKicker')}</p><h1>{t('loginHeading1')}<br /><em>{t('loginHeading2')}</em></h1><p>{t('loginPitch')}</p><div className="login-lines"><span>{t('loginStep1')}</span><span>{t('loginStep2')}</span><span>{t('loginStep3')}</span></div></section><form className="login-form" onSubmit={onSubmit}><div className="brand"><img src={logo} alt="" className="brand-mark" /><span><strong>{t('brandName')}</strong><small>{t('brandSub')}</small></span></div><h2>{t('welcomeBack')}</h2><p className="muted">{t('loginSubtitle')}</p><label>{t('username')}<input type="text" value={credentials.email} onChange={(event) => setCredentials({ ...credentials, email: event.target.value })} /></label><label>{t('password')}<input type="password" value={credentials.password} onChange={(event) => setCredentials({ ...credentials, password: event.target.value })} /></label>{error && <p className="form-error">{error}</p>}<button className="primary-button" disabled={loading}>{loading ? t('authenticating') : t('accessConsole')}</button><button type="button" className="outline-button" onClick={onOfflineLogin}>{t('useOffline')}</button><div className="demo-access"><span>{t('demoAccess')}</span>{demoAccounts.map((account) => <button type="button" key={account.email} onClick={() => setCredentials(account)}>{account.label}</button>)}</div></form></main>
 }
 
 function NotificationPanel({ notifications, onClear, t }) {
@@ -351,11 +361,11 @@ function Directory({ view, rows, search, setSearch, onSearch, canWrite, canRevie
             setSelectedCase(caseItem ? { ...caseItem, persons: (data.persons || []).filter((person) => person.case_id === caseId), alerts: [] } : null)
             return
         }
-        const response = await fetch(`/api/cases/${caseId}`, { headers: { Authorization: `Bearer ${session?.token}` } })
+        const response = await fetch(apiUrl(`/api/cases/${caseId}`), { headers: { Authorization: `Bearer ${session?.token}` } })
         const caseData = await response.json()
         if (!response.ok) return
         caseData.persons = await Promise.all((caseData.persons || []).map(async (person) => {
-            const personResponse = await fetch(`/api/persons/${person.id}`, { headers: { Authorization: `Bearer ${session?.token}` } })
+            const personResponse = await fetch(apiUrl(`/api/persons/${person.id}`), { headers: { Authorization: `Bearer ${session?.token}` } })
             return personResponse.ok ? personResponse.json() : person
         }))
         setSelectedCase(caseData)
