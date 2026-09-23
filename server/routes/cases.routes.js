@@ -8,7 +8,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 
 // GET /api/cases — List cases
-router.get('/', authenticate, paginationRules(), validateRequest, async (req, res) => {
+router.get('/', authenticate, authorize('admin', 'police_officer'), paginationRules(), validateRequest, async (req, res) => {
   try {
     const { status, region, search } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -61,7 +61,7 @@ router.get('/', authenticate, paginationRules(), validateRequest, async (req, re
 });
 
 // GET /api/cases/:id — Get case details
-router.get('/:id', authenticate, positiveId(), validateRequest, async (req, res) => {
+router.get('/:id', authenticate, authorize('admin', 'police_officer'), positiveId(), validateRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const caseResult = await pool.query(

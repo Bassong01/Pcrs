@@ -8,7 +8,7 @@ const { body } = require('express-validator');
 const router = express.Router();
 
 // GET /api/records — List criminal records
-router.get('/', authenticate, paginationRules(), validateRequest, async (req, res) => {
+router.get('/', authenticate, authorize('admin', 'police_officer', 'judicial_authority'), paginationRules(), validateRequest, async (req, res) => {
   try {
     const { search, status } = req.query;
     const page = parseInt(req.query.page, 10) || 1;
@@ -57,7 +57,7 @@ router.get('/', authenticate, paginationRules(), validateRequest, async (req, re
 });
 
 // GET /api/records/:id — Get specific record
-router.get('/:id', authenticate, positiveId(), validateRequest, async (req, res) => {
+router.get('/:id', authenticate, authorize('admin', 'police_officer', 'judicial_authority'), positiveId(), validateRequest, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT cr.*, p.first_name || ' ' || p.last_name as person_name, p.alias, p.id_number, p.photo_url,

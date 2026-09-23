@@ -26,7 +26,7 @@ const upload = multer({
 });
 
 // GET /api/persons — List / search persons of interest
-router.get('/', authenticate, paginationRules(), validateRequest, async (req, res) => {
+router.get('/', authenticate, authorize('admin', 'police_officer', 'judicial_authority'), paginationRules(), validateRequest, async (req, res) => {
   try {
     const { search, wanted } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -76,7 +76,7 @@ router.get('/', authenticate, paginationRules(), validateRequest, async (req, re
 });
 
 // GET /api/persons/:id — Get person details
-router.get('/:id', authenticate, positiveId(), validateRequest, async (req, res) => {
+router.get('/:id', authenticate, authorize('admin', 'police_officer', 'judicial_authority'), positiveId(), validateRequest, async (req, res) => {
   try {
     const { id } = req.params;
     const personResult = await pool.query(

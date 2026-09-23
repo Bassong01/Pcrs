@@ -9,7 +9,7 @@ const { notifyAlert } = require('../realtime');
 const router = express.Router();
 
 // GET /api/alerts — List wanted alerts
-router.get('/', authenticate, paginationRules(), validateRequest, async (req, res) => {
+router.get('/', authenticate, authorize('admin', 'police_officer', 'judicial_authority'), paginationRules(), validateRequest, async (req, res) => {
   try {
     const { status, priority, search } = req.query;
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -68,7 +68,7 @@ router.get('/', authenticate, paginationRules(), validateRequest, async (req, re
 });
 
 // GET /api/alerts/:id — Get alert details
-router.get('/:id', authenticate, positiveId(), validateRequest, async (req, res) => {
+router.get('/:id', authenticate, authorize('admin', 'police_officer', 'judicial_authority'), positiveId(), validateRequest, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT wa.*, p.first_name || ' ' || p.last_name as person_name, p.alias, p.photo_url, p.physical_desc,
@@ -131,9 +131,6 @@ router.post('/', authenticate, authorize('police_officer', 'admin'), [
     const count = parseInt(countResult.rows[0].count) + 1;
     const alert_ref = `WA-${year}-${String(count).padStart(3, '0')}`;
 
-    // Mark person as wanted
-    await client.query('UPDATE persons_of_interest SET is_wanted = true WHERE id = $1', [person_id]);
-
     const result = await client.query(
       `INSERT INTO wanted_alerts (person_id, case_id, alert_ref, reason, priority, description, last_known_loc, issued_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
@@ -171,6 +168,9 @@ router.put('/:id/authorize', authenticate, authorize('judicial_authority', 'admi
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Alert not found or not in pending status.' });
     }
+
+    // Mark person as wanted only once a judicial authority has authorized the alert
+    await pool.query('UPDATE persons_of_interest SET is_wanted = true WHERE id = $1', [result.rows[0].person_id]);
 
     const personResult = await pool.query('SELECT * FROM persons_of_interest WHERE id = $1', [result.rows[0].person_id]);
     notifyAlert({
